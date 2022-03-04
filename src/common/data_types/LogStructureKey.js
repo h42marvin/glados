@@ -55,6 +55,15 @@ const LogStructureKeyType = Enum([
         getDefault: () => null,
     },
     {
+        value: 'log_topic_tree',
+        label: 'Topic tree',
+        validator: async (value, logKey, that) => {
+            const logTopic = await that.invoke.call(that, 'log-topic-tree-load', value);
+            return typeof logTopic.logTopicTree[logKey.rootLogTopic.__id__] !== 'undefined';
+        },
+        getDefault: () => null,
+    },
+    {
         value: 'rich_text_line',
         label: 'Rich Text Line',
         validator: async (value) => true,
@@ -73,6 +82,7 @@ class LogStructureKey {
             template: null,
             enumValues: [],
             parentLogTopic: null,
+            rootLogTopic: null,
         };
     }
 
@@ -92,12 +102,19 @@ class LogStructureKey {
                 inputLogKey.parentLogTopic,
                 'must be provided!',
             ]);
+        } if (inputLogKey.type === LogStructureKeyType.LOG_TOPIC_TREE) {
+            results.push([
+                '.rootLogTopic',
+                inputLogKey.rootLogTopic,
+                'must be provided!',
+            ]);
         }
         return results;
     }
 
     static async load(rawLogKey, index) {
         let parentLogTopic = null;
+        let rootLogTopic = null;
         if (rawLogKey.parent_topic_id) {
             // Normally, we would use "log-topic-load" here, but it does a lot of extra work.
             const logTopic = await this.database.findByPk('LogTopic', rawLogKey.parent_topic_id);
@@ -107,6 +124,15 @@ class LogStructureKey {
                 name: logTopic.name,
             };
         }
+        if (rawLogKey.root_topic_id) {
+            const logTopic = await this.database.findByPk('LogTopic', rawLogKey.root_topic_id);
+            rootLogTopic = {
+                __type__: 'log-topic-tree',
+                __id__: logTopic.id,
+                name: logTopic.name,
+            };
+        }
+
         return {
             __type__: 'log-structure-key',
             __id__: index,
@@ -116,6 +142,7 @@ class LogStructureKey {
             isOptional: rawLogKey.is_optional || false,
             enumValues: rawLogKey.enum_values || [],
             parentLogTopic,
+            rootLogTopic,
         };
     }
 
@@ -135,6 +162,9 @@ class LogStructureKey {
         }
         if (inputLogKey.type === LogStructureKeyType.LOG_TOPIC && inputLogKey.parentLogTopic) {
             result.parent_topic_id = inputLogKey.parentLogTopic.__id__;
+        }
+        if (inputLogKey.type === LogStructureKeyType.LOG_TOPIC_TREE && inputLogKey.rootLogTopic) {
+            result.root_topic_id = inputLogKey.rootLogTopic.__id__;
         }
         return result;
     }

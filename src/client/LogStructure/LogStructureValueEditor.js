@@ -6,6 +6,7 @@ import {
     Selector, TextEditor, TypeaheadInput, TypeaheadOptions, TypeaheadSelector,
 } from '../Common';
 import { LogTopicOptions } from '../LogTopic';
+import { LogTopicTreeOptions } from '../LogTopicTree';
 
 class LogStructureValueEditor extends React.Component {
     constructor(props) {
@@ -80,6 +81,24 @@ class LogStructureValueEditor extends React.Component {
                     disabled={disabled}
                     onChange={(newValue) => this.update(newValue)}
                     where={{ parent_topic_id: parentLogTopicId }}
+                    ref={this.ref}
+                />
+            );
+        } if (logKey.type === LogStructure.Key.Type.LOG_TOPIC_TREE) {
+            const rootLogTopicId = logKey.rootLogTopic
+                ? logKey.rootLogTopic.__id__
+                : undefined;
+            return (
+                <TypeaheadSelector
+                    id={uniqueId}
+                    options={LogTopicTreeOptions.get({
+                        allowCreation: true,
+                        rootLogTopic: logKey.rootLogTopic,
+                    })}
+                    value={value}
+                    disabled={disabled}
+                    onChange={(newValue) => this.update(newValue)}
+                    where={{ root_topic_id: rootLogTopicId }}
                     ref={this.ref}
                 />
             );

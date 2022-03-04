@@ -2,9 +2,11 @@ import LogEvent from './LogEvent';
 import LogStructure from './LogStructure';
 import LogStructureGroup from './LogStructureGroup';
 import LogTopic from './LogTopic';
+import LogTopicTree from './LogTopicTree';
 
 export {
     LogTopic,
+    LogTopicTree,
     LogStructureGroup,
     LogStructure,
     LogEvent,
@@ -12,6 +14,7 @@ export {
 
 const Mapping = {
     'log-topic': LogTopic,
+    'log-topic-tree': LogTopicTree,
     'log-structure-group': LogStructureGroup,
     'log-structure': LogStructure,
     'log-event': LogEvent,

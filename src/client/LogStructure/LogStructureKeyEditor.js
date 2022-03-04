@@ -62,6 +62,19 @@ class LogStructureKeyEditor extends React.Component {
         );
     }
 
+    renderRootLogTopic() {
+        return (
+            <TypeaheadSelector
+                id="log-structure-key-editor-root-topic"
+                options={TypeaheadOptions.getFromTypes(['log-topic'])}
+                value={this.props.logKey.rootLogTopic}
+                disabled={this.props.disabled}
+                onChange={(rootLogTopic) => this.update('rootLogTopic', rootLogTopic)}
+                placeholder="Root Topic"
+            />
+        );
+    }
+
     renderOptionalSelector() {
         return (
             <Selector.Binary
@@ -146,6 +159,8 @@ class LogStructureKeyEditor extends React.Component {
                     {this.renderNameInput()}
                     {this.props.logKey.type === LogStructure.Key.Type.LOG_TOPIC
                         ? this.renderParentLogTopic() : null}
+                    {this.props.logKey.type === LogStructure.Key.Type.LOG_TOPIC_TREE
+                        ? this.renderRootLogTopic() : null }
                     {this.renderOptionalSelector()}
                     {this.renderValue()}
                     {children.pop()}

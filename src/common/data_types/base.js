@@ -57,10 +57,42 @@ export default class DataTypeBase extends DataTypeAPI {
         where.id = itemIds;
     }
 
+    static async updateRootLogTopicWhere(where) {
+        // Special case! The rootLogTopic filter is handled via log topic hierarchy,
+        const logTopicTree = await DataTypeBase.findLogTopicChildren.call(
+            this,
+            [where.rootLogTopic.__id__],
+        );
+
+        delete where.rootLogTopic;
+        assert(!where.id);
+        where.id = logTopicTree;
+    }
+
+    static async findLogTopicChildren(ids = []) {
+        let result = [];
+        const children = [];
+
+        await Promise.all(ids.map(async (id) => {
+            (await this.database.findAll('LogTopic', { parent_topic_id: id }))
+                .forEach((child) => {
+                    children.push(child.id);
+                });
+        }));
+
+        if (children.length) {
+            result = await DataTypeBase.findLogTopicChildren.call(this, children);
+        }
+
+        return [...result, ...children];
+    }
+
     static async updateWhere(where, mapping) {
         await asyncSequence(Object.keys(where), async (fieldName) => {
             if (fieldName === 'logTopics') {
                 await DataTypeBase.updateLogTopicsWhere.call(this, where);
+            } else if (fieldName === 'rootLogTopic') {
+                await DataTypeBase.updateRootLogTopicWhere.call(this, where);
             } else if (fieldName in mapping) {
                 const newFieldName = mapping[fieldName];
                 let value = where[fieldName];
@@ -99,6 +131,7 @@ export default class DataTypeBase extends DataTypeAPI {
         if (
             {
                 LogTopic: true,
+                LogTopicTree: true,
                 LogStructure: true,
             }[this.DataType.name]
         ) {

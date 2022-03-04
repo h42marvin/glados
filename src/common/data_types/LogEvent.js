@@ -3,6 +3,7 @@ import assert from 'assert';
 import RichTextUtils from '../RichTextUtils';
 import DataTypeBase from './base';
 import LogStructure from './LogStructure';
+import LogTopicTree from './LogTopicTree';
 import { getVirtualID } from './utils';
 import { validateRecursive } from './validation';
 
@@ -116,22 +117,34 @@ class LogEvent extends DataTypeBase {
         }
     }
 
-    static extractLogTopics(inputLogEvent) {
+    static async extractLogTopics(inputLogEvent) {
         let logTopics = {
             ...RichTextUtils.extractMentions(inputLogEvent.title, 'log-topic'),
             ...RichTextUtils.extractMentions(inputLogEvent.details, 'log-topic'),
         };
         if (inputLogEvent.logStructure) {
-            inputLogEvent.logStructure.logKeys.forEach((logKey) => {
-                if (logKey.type === LogStructure.Key.Type.LOG_TOPIC && logKey.value) {
-                    logTopics[logKey.value.__id__] = logKey.value;
-                } else if (logKey.type === LogStructure.Key.Type.RICH_TEXT_LINE) {
-                    logTopics = {
-                        ...logTopics,
-                        ...RichTextUtils.extractMentions(logKey.value, 'log-topic'),
-                    };
-                }
-            });
+            await Promise.all(
+                inputLogEvent.logStructure.logKeys.map(async (logKey) => {
+                    if (logKey.type === LogStructure.Key.Type.LOG_TOPIC && logKey.value) {
+                        logTopics[logKey.value.__id__] = logKey.value;
+                    } else if (logKey.type === LogStructure.Key.Type.LOG_TOPIC_TREE
+                      && logKey.value) {
+                        (await LogTopicTree.findRoot.call(
+                            this,
+                            logKey.value.__id__,
+                            logKey.rootLogTopic.__id__,
+                        ))
+                            .forEach((logTopic) => {
+                                logTopics[logTopic.__id__] = logTopic;
+                            });
+                    } else if (logKey.type === LogStructure.Key.Type.RICH_TEXT_LINE) {
+                        logTopics = {
+                            ...logTopics,
+                            ...RichTextUtils.extractMentions(logKey.value, 'log-topic'),
+                        };
+                    }
+                }),
+            );
         }
         return logTopics;
     }
@@ -262,7 +275,7 @@ class LogEvent extends DataTypeBase {
         };
         logEvent = await this.database.createOrUpdateItem('LogEvent', logEvent, fields);
 
-        const targetLogTopics = LogEvent.extractLogTopics(inputLogEvent);
+        const targetLogTopics = await LogEvent.extractLogTopics.call(this, inputLogEvent);
         await this.database.setEdges(
             'LogEventToLogTopic',
             'source_event_id',
